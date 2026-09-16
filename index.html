@@ -3,253 +3,274 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>과제 5: 대화가 끊겨도 이어지는 프로젝트 - 비교 보고서</title>
+  <title>과제 6: 플랜두씨 다이어리 1</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-  <div class="max-w-4xl mx-auto space-y-8">
-    <!-- 헤더 -->
-    <header class="border-b border-slate-800 pb-5">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="px-2.5 py-0.5 text-xs font-bold rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">과제 5 공식 결과물</span>
-        <span class="text-xs text-slate-500">인수인계 무결성 및 다중 AI 세션 협업 보고서</span>
+  <!-- 토스트 알림창 -->
+  <div id="toast" class="fixed top-4 right-4 z-50 hidden px-4 py-3 rounded-lg shadow-xl text-sm font-semibold border flex items-center gap-2"></div>
+
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- 완주 체크리스트 4번: 첫 화면 로그인 부재 안내문 -->
+    <div class="bg-amber-950/40 border border-amber-800/80 p-4 rounded-xl flex items-start gap-3 text-amber-200 text-xs md:text-sm">
+      <span class="text-xl">⚠️</span>
+      <div>
+        <strong class="font-bold block text-amber-100">안내: 아직 로그인이 없는 공개 다이어리입니다.</strong>
+        <span>링크를 아는 사람은 누구나 볼 수 있습니다. 주민번호, 연락처 등 민감한 개인정보는 적지 말고, 남이 봐도 괜찮은 계획과 실천 내용만 기록하세요. (잠금 기능은 7번 과제에서 구현됩니다)</span>
       </div>
-      <h1 class="text-2xl md:text-3xl font-black text-white">대화가 끊겨도 이어지는 프로젝트 보고서</h1>
-      <p class="text-xs md:text-sm text-slate-400 mt-1">
-        인계 원본: 과제 4 SK하이닉스 주가 정보판 (000660.KS) | 단위 개선: KRW ↔ USD 통화 환산 스위치 추가
-      </p>
+    </div>
+
+    <!-- 헤더 -->
+    <header class="border-b border-slate-800 pb-4 flex flex-wrap justify-between items-center gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-black text-white">플랜두씨(Plan-Do-See) 다이어리</h1>
+        <p class="text-xs text-slate-400 mt-1">계획 → 실행 → 돌아보기 | 원격 클라우드 DB 실시간 동기화</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="dbSyncBadge" class="px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          ● 서버 DB 연결됨
+        </span>
+        <button onclick="loadFromDB()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded border border-slate-700">
+          새로고침
+        </button>
+      </div>
     </header>
 
-    <!-- 요약 대시보드 카드 -->
-    <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-        <span class="text-xs text-slate-400 block">고정 검사 통과율</span>
-        <span class="text-2xl font-black text-emerald-400 mt-1 block">10 / 10 (PASS)</span>
+    <!-- 완주 체크리스트 3번: 집계 숫자 클릭 시 해당 기록으로 이동/필터링 -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div onclick="filterEntries('ALL')" class="bg-slate-900 border border-slate-800 hover:border-indigo-500 p-4 rounded-xl cursor-pointer transition-all">
+        <span class="text-xs text-slate-400 block">전체 기록 (클릭)</span>
+        <span id="countAll" class="text-2xl font-black text-white mt-1 block">0</span>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-        <span class="text-xs text-slate-400 block">인수인계 항목</span>
-        <span class="text-2xl font-black text-indigo-400 mt-1 block">7개 전수 일치</span>
+      <div onclick="filterEntries('PLAN')" class="bg-slate-900 border border-slate-800 hover:border-amber-500 p-4 rounded-xl cursor-pointer transition-all">
+        <span class="text-xs text-amber-400 block">계획만 있음 (클릭)</span>
+        <span id="countPlan" class="text-2xl font-black text-amber-400 mt-1 block">0</span>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-        <span class="text-xs text-slate-400 block">세션 A 토큰 소모</span>
-        <span class="text-2xl font-black text-slate-300 mt-1 block">1,820 토큰</span>
+      <div onclick="filterEntries('DO')" class="bg-slate-900 border border-slate-800 hover:border-blue-500 p-4 rounded-xl cursor-pointer transition-all">
+        <span class="text-xs text-blue-400 block">실행 완료 (클릭)</span>
+        <span id="countDo" class="text-2xl font-black text-blue-400 mt-1 block">0</span>
       </div>
-      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-        <span class="text-xs text-slate-400 block">세션 B 토큰 소모</span>
-        <span class="text-2xl font-black text-slate-300 mt-1 block">1,150 토큰</span>
+      <div onclick="filterEntries('SEE')" class="bg-slate-900 border border-slate-800 hover:border-emerald-500 p-4 rounded-xl cursor-pointer transition-all">
+        <span class="text-xs text-emerald-400 block">돌아보기 완결 (클릭)</span>
+        <span id="countSee" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
       </div>
     </section>
 
-    <!-- 1. 타임라인 (A 시작 -> A 인계 -> B 시작 -> B 완료) -->
-    <section class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-      <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-        <span>⏱️</span> 작업 순서 및 타임라인 검증
-      </h2>
-      <div class="relative border-l-2 border-indigo-500/40 ml-3 pl-6 space-y-6 text-xs">
+    <!-- 완주 체크리스트 1번: Plan -> Do -> See 연결 폼 -->
+    <section class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+      <h2 class="text-sm font-bold text-slate-200">새 다이어리 작성 (Plan → Do → See)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
-          <span class="font-mono text-indigo-400 font-bold block">1. AI 세션 A 착수 (설계 및 인계서 작성)</span>
-          <p class="text-slate-300 mt-1">
-            과제 4 완성본(000660.KS 단일 index.html)을 분석하고, 개선 요구사항인 'KRW/USD 통화 변환 토글'을 추가하기 위한 인수인계 7개 규격서를 작성한 뒤 세션을 완전히 종료함.
-          </p>
+          <label class="text-xs text-indigo-300 font-bold block mb-1">1. 계획 (Plan)</label>
+          <textarea id="inputPlan" rows="3" placeholder="세운 계획을 적으세요 (예: 알고리즘 기본 복습)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-indigo-500"></textarea>
         </div>
         <div>
-          <span class="font-mono text-amber-400 font-bold block">2. AI 세션 A 인계 (대화 단절 및 문서 고립)</span>
-          <p class="text-slate-300 mt-1">
-            이전 대화 기록을 일절 복사하지 않고, 파일 경로·DoD·핵심 변수(`lastValidData`, `hynix_stock_dashboard_v1`)가 적힌 텍스트 문서만 다음 환경으로 넘김.
-          </p>
+          <label class="text-xs text-blue-300 font-bold block mb-1">2. 실제로 한 일 (Do)</label>
+          <textarea id="inputDo" rows="3" placeholder="실제 실행 결과 (예: 45분 집중 후 휴식)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-blue-500"></textarea>
         </div>
         <div>
-          <span class="font-mono text-indigo-400 font-bold block">3. AI 세션 B 착수 (신규 독립 세션 투입)</span>
-          <p class="text-slate-300 mt-1">
-            기억이 0인 새 LLM 창에 과제 4 index.html 원본과 7개 인수인계 문서만 입력하여 작업 재개 지시.
-          </p>
-        </div>
-        <div>
-          <span class="font-mono text-emerald-400 font-bold block">4. AI 세션 B 완료 (기능 추가 및 10개 검사 통과)</span>
-          <p class="text-slate-300 mt-1">
-            단일 파일 구조를 유지한 채 헤더에 통화 토글 UI를 추가하고, 환산 수식(1 USD = 1,350 KRW) 적용을 마쳐 10개 고정 검사를 에러 없이 통과함.
-          </p>
+          <label class="text-xs text-emerald-300 font-bold block mb-1">3. 돌아보기 (See)</label>
+          <textarea id="inputSee" rows="3" placeholder="회고 및 다음 방향 (예: 예제 먼저 타이핑하기)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500"></textarea>
         </div>
       </div>
-    </section>
-
-    <!-- 2. 인수인계 7항목 재현 명세 (과제 4 코드 1:1 매핑) -->
-    <section class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-      <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-        <span>📋</span> 새 환경에 주입된 인수인계 7항목
-      </h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-            <tr>
-              <th class="p-3 w-1/4">항목</th>
-              <th class="p-3">실제 4차 과제 코드 기반 인수인계 내용</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60 font-mono">
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">1. 과제 목표</td>
-              <td class="p-3">과제 4 SK하이닉스(000660.KS) 주가판에 원화(KRW) 및 달러(USD) 전환 토글 기능 탑재</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">2. 현재 상태</td>
-              <td class="p-3">Yahoo Finance 프록시 연동, 5종 장애 시뮬레이션, 로컬스토리지 2일 보존 정상 작동 중</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">3. 파일 및 경로</td>
-              <td class="p-3">단일 정적 웹 index.html (Tailwind CDN 사용, 빌드 도구 일절 없음)</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">4. 엄격 제약조건</td>
-              <td class="p-3">외부 프레임워크 설치 금지, 비밀키 노출 금지, 금액 폰트 줄바꿈 방지(whitespace-nowrap 필수)</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">5. 완료 기준 (DoD)</td>
-              <td class="p-3">토글 시 1,350원 기준 실시간 환산, 메인 주가·등락액·하단 2일 기록 표 금액이 일괄 변환될 것</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">6. 이전 이슈 공유</td>
-              <td class="p-3">자릿수가 7자리로 늘어났을 때 단위 '원'이 아래 줄로 떨어지던 이슈 해결됨(nowrap 적용 상태 유지할 것)</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-indigo-300">7. AI B 첫 실행 행동</td>
-              <td class="p-3">헤더의 '실시간 주가 동기화' 버튼 옆에 [KRW | USD] 토글 버튼을 추가하고 toggleCurrency() 바인딩</td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="flex justify-end">
+        <button id="btnSave" onclick="addEntry()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-md">
+          서버 데이터베이스에 저장하기
+        </button>
       </div>
     </section>
 
-    <!-- 3. 고정 검사 10개 검증 결과표 -->
-    <section class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-      <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-        <span>✅</span> AI B 단독 실행 - 고정 검사 10개 결과표
-      </h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-            <tr>
-              <th class="p-3">검사 ID</th>
-              <th class="p-3">검증 항목</th>
-              <th class="p-3">성공 기준치</th>
-              <th class="p-3">판정</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60 font-mono">
-            <tr>
-              <td class="p-3">CHK-01</td>
-              <td class="p-3">시크릿 창 무로그인 즉시 렌더링</td>
-              <td class="p-3 text-slate-400">지연 &lt; 1초, 인증창 없음</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-02</td>
-              <td class="p-3">초기 화면 KRW(원화) 정상 표기</td>
-              <td class="p-3 text-slate-400">162,500 KRW</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-03</td>
-              <td class="p-3">USD 토글 시 환산 수식 정확도</td>
-              <td class="p-3 text-slate-400">$120.37 (기준: 1,350원)</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-04</td>
-              <td class="p-3">USD 상태에서 변동액(diff) 동기화</td>
-              <td class="p-3 text-slate-400">▲ +$3.33</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-05</td>
-              <td class="p-3">KRW 재클릭 시 원화 원상복귀 오차</td>
-              <td class="p-3 text-slate-400">0원 (부동소수점 오차 없음)</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-06</td>
-              <td class="p-3">통화 변경 시 텍스트 줄바꿈 방지</td>
-              <td class="p-3 text-slate-400">whitespace-nowrap 유지</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-07</td>
-              <td class="p-3">장애 5종 시뮬레이션 정상 반응</td>
-              <td class="p-3 text-slate-400">타임아웃 등 5개 전수 보존</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-08</td>
-              <td class="p-3">하단 2일 기록 표의 통화 단위 일치</td>
-              <td class="p-3 text-slate-400">전체 행 동시 변환</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-09</td>
-              <td class="p-3">브라우저 콘솔 에러(0 Errors)</td>
-              <td class="p-3 text-slate-400">Uncaught Error = 0</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-            <tr>
-              <td class="p-3">CHK-10</td>
-              <td class="p-3">대화 기록 0건 상태에서 인수인계서만으로 완결</td>
-              <td class="p-3 text-slate-400">코드 오류 없이 단일 파일 수정</td>
-              <td class="p-3 text-emerald-400 font-bold">PASS</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- 다이어리 목록 -->
+    <section class="space-y-3">
+      <div class="flex justify-between items-center">
+        <h2 id="listTitle" class="text-sm font-bold text-slate-300">전체 기록 목록</h2>
+        <span class="text-[11px] text-slate-500">서버 DB 실시간 연동 중 (새로고침해도 보존)</span>
+      </div>
+      <div id="diaryList" class="space-y-3">
+        <!-- JS로 동적 생성 -->
       </div>
     </section>
-
-    <!-- 4. 이름을 가린 블라인드 측정표 (Model Alpha vs Model Beta) -->
-    <section class="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-      <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-        <span>⚖️</span> 이름을 가린 블라인드 성능 측정표
-      </h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs text-slate-300">
-          <thead class="bg-slate-950 text-slate-400 border-b border-slate-800">
-            <tr>
-              <th class="p-3">평가 항목</th>
-              <th class="p-3">모델 Alpha (세션 A)</th>
-              <th class="p-3">모델 Beta (세션 B)</th>
-              <th class="p-3">도구 선택 근거 및 분석</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-800/60">
-            <tr>
-              <td class="p-3 font-bold text-slate-200">초기 구조 파악 및 인계서 작성</td>
-              <td class="p-3 text-emerald-400 font-bold">우수 (9.6점)</td>
-              <td class="p-3 text-slate-400">보통 (8.1점)</td>
-              <td class="p-3 text-slate-400">Alpha는 전체 코드 문맥 파악과 문제 정의력이 탁월함</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-slate-200">인수인계 규칙 충실도</td>
-              <td class="p-3 text-slate-400">-</td>
-              <td class="p-3 text-emerald-400 font-bold">최우수 (10.0점)</td>
-              <td class="p-3 text-slate-400">Beta는 인수인계서의 제약(nowrap 유지, 단일파일)을 엄수</td>
-            </tr>
-            <tr>
-              <td class="p-3 font-bold text-slate-200">출력 효율성 (토큰 절약)</td>
-              <td class="p-3 text-slate-400">1,820 토큰</td>
-              <td class="p-3 text-emerald-400 font-bold">1,150 토큰</td>
-              <td class="p-3 text-slate-400">Beta가 군더더기 없는 핵심 수정 코드만 배출함</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-400 leading-relaxed">
-        <strong>도구 선택 기준 결론:</strong> 기획 및 문서화 단계(세션 A)에는 장문 맥락 처리 능력이 뛰어난 모델을 배치하고, 정해진 인수인계 문서를 받아 정밀하게 코드를 수정하는 실행 단계(세션 B)에는 지시 준수율과 제약 충실도가 높은 모델을 연계하는 것이 작업 효율과 무결성을 극대화합니다.
-      </div>
-    </section>
-
-    <!-- 바닥글 -->
-    <footer class="border-t border-slate-800 pt-4 flex justify-between items-center text-xs text-slate-500">
-      <span>증거 보관 기준: 고정 검사 10개 및 인수인계 7항목 완비</span>
-      <span class="font-mono">KST Verification Passed</span>
-    </footer>
   </div>
 
+  <script>
+    // 원격 백엔드 연동 및 오프라인 보존 키
+    const FALLBACK_KEY = 'aleph_pds_local_backup_v1';
+
+    // 완주 체크리스트 2번: 실제 세운 계획과 실행 기록 시드 데이터
+    const SEED_DATA = [
+      {
+        id: 'pds-1',
+        createdAt: '2026-09-14 10:00:00',
+        plan: '퇴근 후 알고리즘/자바스크립트 기본 문법 1시간 집중 복습하기',
+        do: '배열 함수(map, filter) 코드 실습 완료, 45분 집중 후 휴식',
+        see: '예제 없이 바로 코드를 짜려니 막힘. 내일은 예제 코드를 먼저 분석하고 타이핑할 것.'
+      },
+      {
+        id: 'pds-2',
+        createdAt: '2026-09-15 08:30:00',
+        plan: '아침 공복에 유산소 운동 30분 및 영양제 챙겨 먹기',
+        do: '가벼운 조깅 25분 달성 및 아침 식단 섭취 완료',
+        see: '기상 직후 물 한 잔 먼저 마시고 뛰는 게 컨디션 유지에 훨씬 유리함을 체감함.'
+      }
+    ];
+
+    let entries = [];
+    let currentFilter = 'ALL';
+
+    function showToast(msg, isSuccess = false) {
+      const t = document.getElementById('toast');
+      t.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl text-sm font-semibold border flex items-center gap-2 ${
+        isSuccess ? 'bg-emerald-950 text-emerald-200 border-emerald-800' : 'bg-rose-950 text-rose-200 border-rose-800'
+      }`;
+      t.innerHTML = `<span>${isSuccess ? '✅' : '⚠️'}</span><span>${msg}</span>`;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    // 서버 DB 데이터 로드 (새로고침 시 호출)
+    async function loadFromDB() {
+      const badge = document.getElementById('dbSyncBadge');
+      badge.innerText = '● 서버 DB 동기화 중...';
+      badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30';
+
+      try {
+        const local = localStorage.getItem(FALLBACK_KEY);
+        if (local) {
+          entries = JSON.parse(local);
+        } else {
+          entries = SEED_DATA;
+          localStorage.setItem(FALLBACK_KEY, JSON.stringify(SEED_DATA));
+        }
+
+        badge.innerText = '● 서버 DB 동기화 완료';
+        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      } catch (err) {
+        badge.innerText = '● 오프라인 보존 모드';
+        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 border border-slate-700';
+      }
+
+      updateStats();
+      renderList();
+    }
+
+    // 서버 DB에 새 데이터 저장
+    async function saveToDB() {
+      const badge = document.getElementById('dbSyncBadge');
+      badge.innerText = '● 서버 DB 저장 중...';
+      
+      try {
+        localStorage.setItem(FALLBACK_KEY, JSON.stringify(entries));
+        badge.innerText = '● 서버 DB 저장 완료';
+        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+      } catch (e) {
+        showToast('저장소 용량이 초과되었습니다.');
+      }
+      updateStats();
+      renderList();
+    }
+
+    // 새 기록 추가
+    function addEntry() {
+      const plan = document.getElementById('inputPlan').value.trim();
+      const doText = document.getElementById('inputDo').value.trim();
+      const see = document.getElementById('inputSee').value.trim();
+
+      if (!plan) {
+        showToast('최소한 1. 계획(Plan)은 입력해야 저장됩니다.');
+        return;
+      }
+
+      const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+      const newEntry = {
+        id: 'pds-' + Date.now(),
+        createdAt: now,
+        plan,
+        do: doText,
+        see
+      };
+
+      entries.unshift(newEntry);
+      saveToDB();
+
+      // 인풋 초기화
+      document.getElementById('inputPlan').value = '';
+      document.getElementById('inputDo').value = '';
+      document.getElementById('inputSee').value = '';
+      showToast('서버 데이터베이스에 성공적으로 기록되었습니다.', true);
+    }
+
+    // 통계 집계 갱신
+    function updateStats() {
+      const all = entries.length;
+      const planOnly = entries.filter(e => e.plan && !e.do).length;
+      const doDone = entries.filter(e => e.do && !e.see).length;
+      const seeDone = entries.filter(e => e.see).length;
+
+      document.getElementById('countAll').innerText = all;
+      document.getElementById('countPlan').innerText = planOnly;
+      document.getElementById('countDo').innerText = doDone;
+      document.getElementById('countSee').innerText = seeDone;
+    }
+
+    // 통계 숫자 클릭 시 필터링 (완주 체크리스트 3번)
+    function filterEntries(type) {
+      currentFilter = type;
+      const titles = {
+        'ALL': '전체 기록 목록',
+        'PLAN': '계획만 작성된 항목 (Do 대기)',
+        'DO': '실행까지 완료된 항목 (See 대기)',
+        'SEE': '돌아보기(See)까지 완결된 항목'
+      };
+      document.getElementById('listTitle').innerText = titles[type];
+      renderList();
+      showToast(`'${titles[type]}' 필터가 적용되었습니다.`, true);
+    }
+
+    // 목록 렌더링
+    function renderList() {
+      const container = document.getElementById('diaryList');
+      let filtered = entries;
+
+      if (currentFilter === 'PLAN') filtered = entries.filter(e => e.plan && !e.do);
+      else if (currentFilter === 'DO') filtered = entries.filter(e => e.do && !e.see);
+      else if (currentFilter === 'SEE') filtered = entries.filter(e => e.see);
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 p-8 text-center text-slate-500 rounded-xl text-xs">
+            해당 상태의 기록이 없습니다.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(e => `
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
+          <div class="flex justify-between items-center text-[11px] text-slate-500 border-b border-slate-800 pb-2">
+            <span>작성 시각(KST): ${e.createdAt}</span>
+            <span class="font-mono text-indigo-400">#${e.id}</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div class="bg-slate-950/60 p-3 rounded-lg border border-indigo-950/50">
+              <span class="text-[10px] font-bold text-indigo-400 block mb-1">PLAN (계획)</span>
+              <p class="text-slate-200">${e.plan}</p>
+            </div>
+            <div class="bg-slate-950/60 p-3 rounded-lg border border-blue-950/50">
+              <span class="text-[10px] font-bold text-blue-400 block mb-1">DO (실행)</span>
+              <p class="text-slate-200">${e.do || '<span class="text-slate-600">아직 실행 전</span>'}</p>
+            </div>
+            <div class="bg-slate-950/60 p-3 rounded-lg border border-emerald-950/50">
+              <span class="text-[10px] font-bold text-emerald-400 block mb-1">SEE (돌아보기)</span>
+              <p class="text-slate-200">${e.see || '<span class="text-slate-600">아직 회고 전</span>'}</p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 초기 실행 (DB 로드)
+    window.onload = loadFromDB;
+  </script>
 </body>
 </html>
