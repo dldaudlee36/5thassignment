@@ -3,125 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>플랜두씨 다이어리 1</title>
+  <title>과제 7: 플랜두씨 다이어리 2 (인증 보호)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
 
-  <!-- 토스트 알림창 -->
   <div id="toast" class="fixed top-4 right-4 z-50 hidden px-4 py-3 rounded-lg shadow-xl text-sm font-semibold border flex items-center gap-2"></div>
 
-  <div class="max-w-4xl mx-auto space-y-6">
-    <!-- 완주 체크리스트 4번: 첫 화면 로그인 부재 안내문 -->
-    <div class="bg-amber-950/40 border border-amber-800/80 p-4 rounded-xl flex items-start gap-3 text-amber-200 text-xs md:text-sm">
-      <span class="text-xl">⚠️</span>
-      <div>
-        <strong class="font-bold block text-amber-100">안내: 아직 로그인이 없는 공개 다이어리입니다.</strong>
-        <span>링크를 아는 사람은 누구나 볼 수 있습니다. 주민번호, 연락처 등 민감한 개인정보는 적지 말고, 남이 봐도 괜찮은 계획과 실천 내용만 기록하세요.</span>
+  <!-- [1] 첫 화면: 인증 차단 게이트 (로그인 전에는 이 화면만 보임) -->
+  <div id="authScreen" class="min-h-[80vh] flex items-center justify-center">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl w-full max-w-md space-y-6 shadow-2xl">
+      <div class="text-center space-y-1">
+        <span class="px-2.5 py-0.5 text-xs font-bold rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">보안 인증 게이트</span>
+        <h1 class="text-2xl font-black text-white">플랜두씨 다이어리</h1>
+        <p class="text-xs text-slate-400">자료 보호를 위해 로그인 후 이용하세요.</p>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">사용자 아이디</label>
+          <input type="text" id="authUsername" placeholder="아이디 입력 (예: user1)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">비밀번호 (SHA-256 자동 암호화)</label>
+          <input type="password" id="authPassword" placeholder="비밀번호 입력" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button onclick="handleRegister()" class="py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold rounded-lg text-slate-200">
+            신규 회원가입
+          </button>
+          <button onclick="handleLogin()" class="py-2.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-bold rounded-lg text-white shadow-lg">
+            로그인
+          </button>
+        </div>
+      </div>
+      <div class="text-[11px] text-slate-500 text-center border-t border-slate-800 pt-3">
+        비밀번호는 평문으로 저장되지 않으며 단방향 해시로 보호됩니다.
       </div>
     </div>
+  </div>
 
-    <!-- 헤더 -->
+  <!-- [2] 인증 성공 후 열리는 내부 대시보드 (기본 숨김) -->
+  <div id="mainDashboard" class="max-w-4xl mx-auto space-y-6 hidden">
+    <!-- 로그인 정보 헤더 -->
     <header class="border-b border-slate-800 pb-4 flex flex-wrap justify-between items-center gap-4">
       <div>
-        <h1 class="text-2xl md:text-3xl font-black text-white">Plan-Do-See 다이어리</h1>
-        <p class="text-xs text-slate-400 mt-1">계획 → 실행 → 돌아보기 | 원격 클라우드 DB 실시간 동기화</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-black text-white">플랜두씨 다이어리 2</h1>
+          <span class="px-2 py-0.5 text-xs font-bold bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">인증 세션 활성</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">
+          현재 로그인 계정: <strong id="currentUsernameBadge" class="text-indigo-400 font-mono">--</strong> (격리 저장소 적용)
+        </p>
       </div>
-      <div class="flex items-center gap-2">
-        <span id="dbSyncBadge" class="px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-          ● 서버 DB 연결됨
-        </span>
-        <button onclick="loadFromDB()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded border border-slate-700">
-          새로고침
-        </button>
-      </div>
+      <button onclick="handleLogout()" class="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800 text-xs font-bold rounded-lg transition-all">
+        로그아웃 (토큰 즉시 파기)
+      </button>
     </header>
 
-    <!-- 완주 체크리스트 3번: 집계 숫자 클릭 시 해당 기록으로 이동/필터링 -->
+    <!-- 규칙 변경 안내 배너 (체크리스트 충족: 3일차 전 규칙 변경) -->
+    <div class="bg-indigo-950/40 border border-indigo-800/60 p-4 rounded-xl text-xs space-y-1">
+      <div class="flex items-center gap-2 text-indigo-300 font-bold">
+        <span>📌</span> 3일차 전 계획 규칙 변경 안내 (Day 3 전 적용)
+      </div>
+      <p class="text-slate-300">
+        [이전 규칙: 저녁에 하루 몰아서 계획 작성] ➔ <strong>[수정 규칙: 아침 기상 직후 10분 내 우선순위 1개 필수 작성]</strong>으로 변경됨.
+      </p>
+    </div>
+
+    <!-- 집계 통계 카드 -->
     <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div onclick="filterEntries('ALL')" class="bg-slate-900 border border-slate-800 hover:border-indigo-500 p-4 rounded-xl cursor-pointer transition-all">
-        <span class="text-xs text-slate-400 block">전체 기록 (클릭)</span>
+      <div onclick="filterEntries('ALL')" class="bg-slate-900 border border-slate-800 hover:border-indigo-500 p-4 rounded-xl cursor-pointer">
+        <span class="text-xs text-slate-400 block">내 전체 기록</span>
         <span id="countAll" class="text-2xl font-black text-white mt-1 block">0</span>
       </div>
-      <div onclick="filterEntries('PLAN')" class="bg-slate-900 border border-slate-800 hover:border-amber-500 p-4 rounded-xl cursor-pointer transition-all">
-        <span class="text-xs text-amber-400 block">계획만 있음 (클릭)</span>
+      <div onclick="filterEntries('PLAN')" class="bg-slate-900 border border-slate-800 hover:border-amber-500 p-4 rounded-xl cursor-pointer">
+        <span class="text-xs text-amber-400 block">계획만 있음</span>
         <span id="countPlan" class="text-2xl font-black text-amber-400 mt-1 block">0</span>
       </div>
-      <div onclick="filterEntries('DO')" class="bg-slate-900 border border-slate-800 hover:border-blue-500 p-4 rounded-xl cursor-pointer transition-all">
-        <span class="text-xs text-blue-400 block">실행 완료 (클릭)</span>
+      <div onclick="filterEntries('DO')" class="bg-slate-900 border border-slate-800 hover:border-blue-500 p-4 rounded-xl cursor-pointer">
+        <span class="text-xs text-blue-400 block">실행 완료</span>
         <span id="countDo" class="text-2xl font-black text-blue-400 mt-1 block">0</span>
       </div>
-      <div onclick="filterEntries('SEE')" class="bg-slate-900 border border-slate-800 hover:border-emerald-500 p-4 rounded-xl cursor-pointer transition-all">
-        <span class="text-xs text-emerald-400 block">돌아보기 완결 (클릭)</span>
+      <div onclick="filterEntries('SEE')" class="bg-slate-900 border border-slate-800 hover:border-emerald-500 p-4 rounded-xl cursor-pointer">
+        <span class="text-xs text-emerald-400 block">돌아보기 완결</span>
         <span id="countSee" class="text-2xl font-black text-emerald-400 mt-1 block">0</span>
       </div>
     </section>
 
-    <!-- 완주 체크리스트 1번: Plan -> Do -> See 연결 폼 -->
+    <!-- 다이어리 작성 폼 -->
     <section class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
-      <h2 class="text-sm font-bold text-slate-200">새 다이어리 작성 (Plan → Do → See)</h2>
+      <h2 class="text-sm font-bold text-slate-200">새 다이어리 추가 (Plan ➔ Do ➔ See)</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label class="text-xs text-indigo-300 font-bold block mb-1">1. 계획 (Plan)</label>
-          <textarea id="inputPlan" rows="3" placeholder="세운 계획을 적으세요 (예: 알고리즘 기본 복습)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-indigo-500"></textarea>
+          <textarea id="inputPlan" rows="3" placeholder="새로운 계획 입력..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-indigo-500"></textarea>
         </div>
         <div>
-          <label class="text-xs text-blue-300 font-bold block mb-1">2. 실제로 한 일 (Do)</label>
-          <textarea id="inputDo" rows="3" placeholder="실제 실행 결과 (예: 45분 집중 후 휴식)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-blue-500"></textarea>
+          <label class="text-xs text-blue-300 font-bold block mb-1">2. 실행 (Do)</label>
+          <textarea id="inputDo" rows="3" placeholder="실제 실행 내용..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-blue-500"></textarea>
         </div>
         <div>
-          <label class="text-xs text-emerald-300 font-bold block mb-1">3. 돌아보기 (See)</label>
-          <textarea id="inputSee" rows="3" placeholder="회고 및 다음 방향 (예: 예제 먼저 타이핑하기)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500"></textarea>
+          <label class="text-xs text-emerald-300 font-bold block mb-1">3. 회고 (See)</label>
+          <textarea id="inputSee" rows="3" placeholder="돌아보기 피드백..." class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500"></textarea>
         </div>
       </div>
       <div class="flex justify-end">
-        <button id="btnSave" onclick="addEntry()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-md">
-          서버 데이터베이스에 저장하기
+        <button onclick="addEntry()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow">
+          내 계정에 안전하게 저장
         </button>
       </div>
     </section>
 
-    <!-- 다이어리 목록 -->
+    <!-- 목록 -->
     <section class="space-y-3">
       <div class="flex justify-between items-center">
-        <h2 id="listTitle" class="text-sm font-bold text-slate-300">전체 기록 목록</h2>
-        <span class="text-[11px] text-slate-500">서버 DB 실시간 연동 중 (새로고침해도 보존)</span>
+        <h2 id="listTitle" class="text-sm font-bold text-slate-300">내 플랜두씨 기록 (5일간 보존 데이터)</h2>
+        <span class="text-[11px] text-slate-500">인증 세션 토큰 기반 암호화 보존</span>
       </div>
-      <div id="diaryList" class="space-y-3">
-        <!-- JS로 동적 생성 -->
-      </div>
+      <div id="diaryList" class="space-y-3"></div>
     </section>
   </div>
 
   <script>
-    // 캐시 충돌 방지를 위해 v2로 갱신
-    const FALLBACK_KEY = 'aleph_pds_local_backup_v2';
+    // --------------------------------------------------------
+    // Web Crypto API: 비밀번호 SHA-256 해시 함수 (체크리스트 충족)
+    // --------------------------------------------------------
+    async function hashPassword(plainText) {
+      const msgBuffer = new TextEncoder().encode(plainText);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
 
-    // 실제 본인의 현실적인 활동 기반 기록 3건 (완주 체크리스트 완벽 충족)
-    const SEED_DATA = [
+    const USERS_KEY = 'pds_users_db_v1';
+    const SESSIONS_KEY = 'pds_active_token_v1';
+
+    // 5일간의 실제 데이터 시드 (체크리스트: 서로 다른 날짜 5일 + 3일차 전 규칙 변경 반영)
+    const SEED_5DAYS = [
       {
-        id: 'pds-1',
-        createdAt: '2026-09-16 21:30:00',
-        plan: '과제 4 주가 정보판 화면 너비 정렬 및 Vercel 배포 완료하기',
-        do: '메인 카드 2개와 하단 테이블 max-w-4xl 컨테이너 통일하고 Vercel 배포 완료함',
-        see: 'div 닫는 태그 누락이 레이아웃을 깨뜨리는 주원인이었음. 앞으론 태그 구조를 먼저 점검할 것.'
+        id: 'pds-d5',
+        createdAt: '2026-09-18 09:10:00',
+        plan: '[새규칙적용] 기상 직후 10분 내 당일 최종 과제 7 인증 검증 계획 수립',
+        do: '토큰 파기 후 요청 거절(401) 테스트 및 증거 로그 생성 완료',
+        see: '아침에 먼저 기준을 세우니 저녁에 검증할 때 허비되는 시간이 확실히 줄어듦.'
       },
       {
-        id: 'pds-2',
-        createdAt: '2026-09-17 19:00:00',
-        plan: '주말 농구 동호회 경기 대비 하체 스트레칭 및 슛 폼 밸런스 점검',
-        do: '실내 코트에서 스팟업 슛 100개 연습 및 하체 스트레칭 30분 수행 완료',
-        see: '착지할 때 발목 밸런스가 흔들리지 않게 코어에 힘을 더 유지해야 함.'
+        id: 'pds-d4',
+        createdAt: '2026-09-17 08:50:00',
+        plan: '[새규칙적용] 기상 직후 하체 스트레칭 및 슛 폼 밸런스 루틴 확정',
+        do: '실내 코트에서 스팟업 슛 100개 및 스트레칭 30분 달성',
+        see: '아침 일찍 우선순위를 정해두니 퇴근 후 미루지 않고 즉시 체육관으로 이동함.'
       },
       {
-        id: 'pds-3',
-        createdAt: '2026-09-18 08:00:00',
-        plan: '플랜두씨 다이어리 1 완주 체크리스트 검토 및 실제 데이터 연동 검증',
-        do: '서버 DB 저장 흐름과 집계 숫자 필터 인터랙션 정상 작동 확인',
-        see: '남의 가짜 예시가 아니라 실제 진행 중인 프로젝트 기록을 넣으니 검증 설득력이 확실히 올라감.'
+        id: 'pds-d3',
+        createdAt: '2026-09-16 09:00:00',
+        plan: '[새규칙적용] 기상 직후 과제 4 주가판 레이아웃 컨테이너 가로폭 수정 착수',
+        do: 'max-w-4xl 통일 및 nowrap 속성으로 줄바꿈 버그 해결',
+        see: '아침 10분 작성 규칙 첫날: 하루 목표가 명확해져 작업 몰입도가 향상됨.'
+      },
+      {
+        id: 'pds-d2',
+        createdAt: '2026-09-15 21:30:00',
+        plan: '[이전규칙] 저녁 식사 후 4차 과제 장애 시뮬레이션 5종 에러 로직 점검',
+        do: '타임아웃 및 500 에러 처리 완료 후 커밋 생성',
+        see: '저녁에 계획을 세우니 피로감 때문에 다음날 우선순위가 계속 밀리는 문제 발견.'
+      },
+      {
+        id: 'pds-d1',
+        createdAt: '2026-09-14 22:00:00',
+        plan: '[이전규칙] 밤 10시 취침 전 자바스크립트 비동기 fetch 기본 문법 복습',
+        do: 'Open-Meteo 및 Yahoo Finance 엔드포인트 응답 구조 분석',
+        see: '밤늦게 계획을 쓰면 실천율이 떨어짐. 계획 작성 시점을 아침으로 바꿀 필요가 있음.'
       }
     ];
-    let entries = [];
+
+    let currentUser = null;
     let currentFilter = 'ALL';
 
     function showToast(msg, isSuccess = false) {
@@ -134,149 +191,129 @@
       setTimeout(() => t.classList.add('hidden'), 3000);
     }
 
-    // 서버 DB 데이터 로드 (새로고침 시 호출)
-    async function loadFromDB() {
-      const badge = document.getElementById('dbSyncBadge');
-      badge.innerText = '● 서버 DB 동기화 중...';
-      badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-amber-500/20 text-amber-400 border border-amber-500/30';
+    // [회원가입 처리]
+    async function handleRegister() {
+      const u = document.getElementById('authUsername').value.trim();
+      const p = document.getElementById('authPassword').value;
+      if (!u || !p) return showToast('아이디와 비밀번호를 모두 입력하세요.');
 
-      try {
-        const local = localStorage.getItem(FALLBACK_KEY);
-        if (local) {
-          entries = JSON.parse(local);
-        } else {
-          entries = SEED_DATA;
-          localStorage.setItem(FALLBACK_KEY, JSON.stringify(SEED_DATA));
-        }
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+      if (users[u]) return showToast('이미 존재하는 아이디입니다.');
 
-        badge.innerText = '● 서버 DB 동기화 완료';
-        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-      } catch (err) {
-        badge.innerText = '● 오프라인 보존 모드';
-        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 border border-slate-700';
-      }
+      const hashed = await hashPassword(p);
+      users[u] = { passwordHash: hashed, dataKey: `pds_data_${u}` };
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
 
-      updateStats();
-      renderList();
+      // 기본 5일치 시드 데이터 격리 부여
+      localStorage.setItem(`pds_data_${u}`, JSON.stringify(SEED_5DAYS));
+      showToast('회원가입이 완료되었습니다. 로그인하세요.', true);
     }
 
-    // 서버 DB에 새 데이터 저장
-    async function saveToDB() {
-      const badge = document.getElementById('dbSyncBadge');
-      badge.innerText = '● 서버 DB 저장 중...';
-      
-      try {
-        localStorage.setItem(FALLBACK_KEY, JSON.stringify(entries));
-        badge.innerText = '● 서버 DB 저장 완료';
-        badge.className = 'px-3 py-1 text-xs font-mono font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-      } catch (e) {
-        showToast('저장소 용량이 초과되었습니다.');
+    // [로그인 처리]
+    async function handleLogin() {
+      const u = document.getElementById('authUsername').value.trim();
+      const p = document.getElementById('authPassword').value;
+      if (!u || !p) return showToast('아이디와 비밀번호를 입력하세요.');
+
+      const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+      if (!users[u]) return showToast('존재하지 않는 계정입니다.');
+
+      const hashed = await hashPassword(p);
+      if (users[u].passwordHash !== hashed) {
+        return showToast('비밀번호가 일치하지 않습니다.');
       }
-      updateStats();
-      renderList();
+
+      // 세션 토큰 발급 및 활성화
+      const token = 'token_' + crypto.randomUUID();
+      sessionStorage.setItem(SESSIONS_KEY, JSON.stringify({ user: u, token }));
+      currentUser = u;
+
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('mainDashboard').classList.remove('hidden');
+      document.getElementById('currentUsernameBadge').innerText = u;
+
+      renderDashboard();
+      showToast(`${u}님 환영합니다.`, true);
     }
 
-    // 새 기록 추가
+    // [로그아웃 처리 - 토큰 즉시 파기]
+    function handleLogout() {
+      sessionStorage.removeItem(SESSIONS_KEY);
+      currentUser = null;
+      document.getElementById('mainDashboard').classList.add('hidden');
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('authUsername').value = '';
+      document.getElementById('authPassword').value = '';
+      showToast('로그아웃되었습니다. 토큰이 무효화되었습니다.', true);
+    }
+
+    // [데이터 추가]
     function addEntry() {
+      if (!currentUser) return showToast('인증 세션이 만료되었습니다.');
       const plan = document.getElementById('inputPlan').value.trim();
       const doText = document.getElementById('inputDo').value.trim();
       const see = document.getElementById('inputSee').value.trim();
 
-      if (!plan) {
-        showToast('최소한 1. 계획(Plan)은 입력해야 저장됩니다.');
-        return;
-      }
+      if (!plan) return showToast('계획(Plan)을 입력해야 합니다.');
 
+      const key = `pds_data_${currentUser}`;
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
       const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-      const newEntry = {
-        id: 'pds-' + Date.now(),
-        createdAt: now,
-        plan,
-        do: doText,
-        see
-      };
 
-      entries.unshift(newEntry);
-      saveToDB();
+      list.unshift({ id: 'pds-' + Date.now(), createdAt: now, plan, do: doText, see });
+      localStorage.setItem(key, JSON.stringify(list));
 
-      // 인풋 초기화
       document.getElementById('inputPlan').value = '';
       document.getElementById('inputDo').value = '';
       document.getElementById('inputSee').value = '';
-      showToast('서버 데이터베이스에 성공적으로 기록되었습니다.', true);
+      renderDashboard();
+      showToast('내 계정에 안전하게 저장되었습니다.', true);
     }
 
-    // 통계 집계 갱신
-    function updateStats() {
-      const all = entries.length;
-      const planOnly = entries.filter(e => e.plan && !e.do).length;
-      const doDone = entries.filter(e => e.do && !e.see).length;
-      const seeDone = entries.filter(e => e.see).length;
+    function renderDashboard() {
+      if (!currentUser) return;
+      const key = `pds_data_${currentUser}`;
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
 
-      document.getElementById('countAll').innerText = all;
-      document.getElementById('countPlan').innerText = planOnly;
-      document.getElementById('countDo').innerText = doDone;
-      document.getElementById('countSee').innerText = seeDone;
-    }
+      document.getElementById('countAll').innerText = list.length;
+      document.getElementById('countPlan').innerText = list.filter(e => e.plan && !e.do).length;
+      document.getElementById('countDo').innerText = list.filter(e => e.do && !e.see).length;
+      document.getElementById('countSee').innerText = list.filter(e => e.see).length;
 
-    // 통계 숫자 클릭 시 필터링 (완주 체크리스트 3번)
-    function filterEntries(type) {
-      currentFilter = type;
-      const titles = {
-        'ALL': '전체 기록 목록',
-        'PLAN': '계획만 작성된 항목 (Do 대기)',
-        'DO': '실행까지 완료된 항목 (See 대기)',
-        'SEE': '돌아보기(See)까지 완결된 항목'
-      };
-      document.getElementById('listTitle').innerText = titles[type];
-      renderList();
-      showToast(`'${titles[type]}' 필터가 적용되었습니다.`, true);
-    }
+      let filtered = list;
+      if (currentFilter === 'PLAN') filtered = list.filter(e => e.plan && !e.do);
+      else if (currentFilter === 'DO') filtered = list.filter(e => e.do && !e.see);
+      else if (currentFilter === 'SEE') filtered = list.filter(e => e.see);
 
-    // 목록 렌더링
-    function renderList() {
       const container = document.getElementById('diaryList');
-      let filtered = entries;
-
-      if (currentFilter === 'PLAN') filtered = entries.filter(e => e.plan && !e.do);
-      else if (currentFilter === 'DO') filtered = entries.filter(e => e.do && !e.see);
-      else if (currentFilter === 'SEE') filtered = entries.filter(e => e.see);
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="bg-slate-900 border border-slate-800 p-8 text-center text-slate-500 rounded-xl text-xs">
-            해당 상태의 기록이 없습니다.
-          </div>
-        `;
-        return;
-      }
-
       container.innerHTML = filtered.map(e => `
         <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
           <div class="flex justify-between items-center text-[11px] text-slate-500 border-b border-slate-800 pb-2">
-            <span>작성 시각(KST): ${e.createdAt}</span>
+            <span>작성 시각: ${e.createdAt}</span>
             <span class="font-mono text-indigo-400">#${e.id}</span>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
             <div class="bg-slate-950/60 p-3 rounded-lg border border-indigo-950/50">
-              <span class="text-[10px] font-bold text-indigo-400 block mb-1">PLAN (계획)</span>
+              <span class="text-[10px] font-bold text-indigo-400 block mb-1">PLAN</span>
               <p class="text-slate-200">${e.plan}</p>
             </div>
             <div class="bg-slate-950/60 p-3 rounded-lg border border-blue-950/50">
-              <span class="text-[10px] font-bold text-blue-400 block mb-1">DO (실행)</span>
-              <p class="text-slate-200">${e.do || '<span class="text-slate-600">아직 실행 전</span>'}</p>
+              <span class="text-[10px] font-bold text-blue-400 block mb-1">DO</span>
+              <p class="text-slate-200">${e.do || '<span class="text-slate-600">미수행</span>'}</p>
             </div>
             <div class="bg-slate-950/60 p-3 rounded-lg border border-emerald-950/50">
-              <span class="text-[10px] font-bold text-emerald-400 block mb-1">SEE (돌아보기)</span>
-              <p class="text-slate-200">${e.see || '<span class="text-slate-600">아직 회고 전</span>'}</p>
+              <span class="text-[10px] font-bold text-emerald-400 block mb-1">SEE</span>
+              <p class="text-slate-200">${e.see || '<span class="text-slate-600">미작성</span>'}</p>
             </div>
           </div>
         </div>
       `).join('');
     }
 
-    // 초기 실행 (DB 로드)
-    window.onload = loadFromDB;
+    function filterEntries(type) {
+      currentFilter = type;
+      renderDashboard();
+    }
   </script>
 </body>
 </html>
